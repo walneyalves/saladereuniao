@@ -1,0 +1,42 @@
+version: '3.8'
+
+volumes:
+  api_data: {}
+
+networks:
+  private:
+    attachable: true
+
+services:
+  api:
+    image: meeting-rooms:0.0.1-SNAPSHOT
+    ports:
+      - "8080:8080"
+    networks:
+      - private
+    environment:
+      MONGODB_URI: "mongodb://mongo:mongo@mongo:27017/mongo?authSource=admin"
+      THC_PORT: 8080
+      THC_PATH: "/actuator/health"
+    healthcheck:
+      test: ["CMD", "/workspace/health-check"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+      timeout: 10s
+  mongo:
+    image: mongo:6.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+      MONGO_INITDB_DATABASE: mongo
+    networks:
+      - private
+    volumes:
+      - api_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--username", "mongo", "--password", "mongo", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s

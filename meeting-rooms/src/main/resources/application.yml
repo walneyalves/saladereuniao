@@ -1,0 +1,41 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/mongo?authSource=admin}
+      username: ${MONGODB_USER:mongo}
+      password: ${MONGODB_PASS:mongo}
+      database: ${MONGODB_DATABASE:mongo}
+      port: ${MONGODB_PORT:27017}
+      host: ${MONGODB_HOST:localhost}
+  application:
+    name: ${info.app.name}
+
+info:
+  app:
+    name: '@project.name@'
+    version: '@project.version@'
+    description: '@project.description@'
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+  observations:
+    key-values:
+      application: ${info.app.name}
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /docs.html

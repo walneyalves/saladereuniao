@@ -1,0 +1,52 @@
+stages:
+  - test
+  - build
+  - push
+
+coverage:qodana:
+  image:
+    name: jetbrains/qodana-jvm:2024.2
+    entrypoint: [ "" ]
+  variables:
+    QODANA_TOKEN: $QODANA_TOKEN
+    QODANA_ENDPOINT: "https://qodana.cloud"
+  script:
+    - qodana
+
+api:build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - apk add --no-cache openjdk17-jdk maven
+    - echo "VERSION=$(mvn --non-recursive help:evaluate -Dexpression=project.version -q -DforceStdout)" >> .env
+    - echo "NAME=$(mvn --non-recursive help:evaluate -Dexpression=project.name -q -DforceStdout)" >> .env
+  script:
+    - source .env
+    - ./mvnw spring-boot:build-image
+  after_script:
+    - source .env
+    - docker save -o $NAME.tar $NAME:$VERSION
+  artifacts:
+    paths:
+      - .env
+      - meeting-rooms.tar
+
+api:push:
+  stage: push
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - source .env
+  script:
+    - |
+      docker load -i ${NAME}.tar
+      export BASE_IMG=${NAME}:${VERSION}
+      export FINAL_IMG=$CI_REGISTRY/${CI_PROJECT_PATH}/${NAME}
+      for tag in ${CI_COMMIT_SHORT_SHA} ${CI_COMMIT_REF_SLUG} ${VERSION} latest; do
+      docker tag ${BASE_IMG} ${FINAL_IMG}:${tag}
+      done
+      docker push ${FINAL_IMG} --all-tags
